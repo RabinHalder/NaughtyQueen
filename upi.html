@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Pay with UPI</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+         font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: linear-gradient(160deg,#1a1033,#3b1d5e); color: #fff; }
+  .card { width: 92%; max-width: 380px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+          border-radius: 20px; padding: 26px 20px; text-align: center; }
+  .crown { font-size: 40px; }
+  h1 { font-size: 20px; margin: 8px 0 4px; letter-spacing: .5px; }
+  .amt { font-size: 38px; font-weight: 800; margin: 10px 0 4px; }
+  .sub { opacity: .75; font-size: 14px; margin-bottom: 20px; }
+  a.btn { display: block; text-decoration: none; color: #fff; font-weight: 700; font-size: 16px;
+          padding: 14px; border-radius: 14px; margin: 10px 0; }
+  .main { background: linear-gradient(90deg,#f7b733,#fc4a1a); font-size: 18px; }
+  .gpay { background: #1a73e8; } .phonepe { background: #5f259f; } .paytm { background: #00b9f1; }
+  .note { font-size: 12.5px; opacity: .7; margin-top: 16px; line-height: 1.5; }
+  .err { color: #ffb4b4; }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="crown">👑</div>
+  <h1>VIP MEMBERSHIP</h1>
+  <div class="amt" id="amt">₹—</div>
+  <div class="sub" id="plan">Opening your UPI app…</div>
+  <a class="btn main" id="pay" href="#">Pay with UPI App</a>
+  <a class="btn gpay" id="gpay" href="#">Google Pay</a>
+  <a class="btn phonepe" id="phonepe" href="#">PhonePe</a>
+  <a class="btn paytm" id="paytm" href="#">Paytm</a>
+  <div class="note">After paying, go back to the bot and send the <b>12-digit UTR</b> or a <b>payment screenshot</b>.<br>If the app does not open, scan the QR in the bot.</div>
+</div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var pa = q.get("pa") || "", pn = q.get("pn") || "VIP", am = q.get("am") || "", tn = q.get("tn") || "VIP";
+  var okPa = /^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9.-]{2,64}$/.test(pa);
+  var okAm = /^\d{1,6}(\.\d{1,2})?$/.test(am);
+  if (!okPa || !okAm) {
+    document.getElementById("card").innerHTML = '<div class="crown">⚠️</div><h1 class="err">Invalid payment link</h1><div class="note">Please go back to the bot and tap Pay again.</div>';
+    return;
+  }
+  var qs = "pa=" + encodeURIComponent(pa) + "&pn=" + encodeURIComponent(pn.slice(0, 40)) +
+           "&am=" + encodeURIComponent(am) + "&cu=INR&tn=" + encodeURIComponent(tn.slice(0, 50));
+  var upi = "upi://pay?" + qs;
+  document.getElementById("amt").textContent = "₹" + am;
+  document.getElementById("plan").textContent = tn.slice(0, 50);
+  document.getElementById("pay").href = upi;
+  document.getElementById("gpay").href = "tez://upi/pay?" + qs;
+  document.getElementById("phonepe").href = "phonepe://pay?" + qs;
+  document.getElementById("paytm").href = "paytmmp://pay?" + qs;
+  setTimeout(function () { location.href = upi; }, 400);
+})();
+</script>
+</body>
+</html>
