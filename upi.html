@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Pay with UPI</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
@@ -30,21 +33,18 @@
   <h1>VIP MEMBERSHIP</h1>
   <div class="amt" id="amt">₹—</div>
   <div class="sub" id="plan">Choose how you want to pay</div>
-  <a class="btn main" id="pay" href="#" data-app="upi">💳 Pay with any UPI App</a>
-  <a class="btn gpay" id="gpay" href="#" data-app="gpay">Google Pay</a>
-  <a class="btn phonepe" id="phonepe" href="#" data-app="phonepe">PhonePe</a>
-  <a class="btn paytm" id="paytm" href="#" data-app="paytm">Paytm</a>
-  <div class="note" id="note">After paying, go back to the bot and send the <b>12-digit UTR</b> or a <b>payment screenshot</b>.<br>If the app does not open, scan the QR in the bot.</div>
+  <button class="btn main" id="pay" type="button" data-app="upi">💳 Pay with any UPI App</button>
+  <button class="btn gpay" id="gpay" type="button" data-app="gpay">Google Pay</button>
+  <button class="btn phonepe" id="phonepe" type="button" data-app="phonepe">PhonePe</button>
+  <button class="btn paytm" id="paytm" type="button" data-app="paytm">Paytm</button>
+  <div class="note" id="note">Tap a button — your UPI app will open to pay.<br>After paying, come back to the bot and send the <b>12-digit UTR</b> or a <b>payment screenshot</b>.</div>
 </div>
 <script>
 (function () {
-  var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
-  // Real Telegram Mini App = Telegram passes init data / a known platform
-  var inTg = !!(tg && ((tg.initData && tg.initData.length) || (tg.platform && tg.platform !== "unknown")));
-
   var q = new URLSearchParams(location.search);
   var pa = q.get("pa") || "", pn = q.get("pn") || "VIP", am = q.get("am") || "", tn = q.get("tn") || "VIP";
-  var wantApp = q.get("app") || "";
+  var isExt = q.get("ext") === "1";          // ONLY the external browser copy opens UPI apps
+  var wantApp = q.get("app") || "upi";
   var okPa = /^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9.-]{2,64}$/.test(pa);
   var okAm = /^\d{1,6}(\.\d{1,2})?$/.test(am);
   if (!okPa || !okAm) {
@@ -61,39 +61,40 @@
   };
   document.getElementById("amt").textContent = "₹" + am;
   document.getElementById("plan").textContent = tn.slice(0, 50);
+  var ids = ["pay", "gpay", "phonepe", "paytm"];
 
-  var btns = ["pay", "gpay", "phonepe", "paytm"];
-
-  if (inTg) {
-    // ---- Inside Telegram: the in-app window cannot open upi:// (ERR_UNKNOWN_URL_SCHEME).
-    // Open this same page in the phone's browser, which then opens the UPI app.
-    try { tg.ready(); tg.expand(); tg.setHeaderColor("#1a1033"); tg.setBackgroundColor("#1a1033"); } catch (e) {}
-    var base = location.href.split("#")[0];
-    var openOutside = function (app) {
-      var url = base + (base.indexOf("?") >= 0 ? "&" : "?") + "ext=1&app=" + encodeURIComponent(app || "upi");
-      try { tg.openLink(url); } catch (e) {}
-    };
-    btns.forEach(function (id) {
+  if (isExt) {
+    // ---------- Phone browser (Chrome): UPI links work here ----------
+    ids.forEach(function (id) {
       var el = document.getElementById(id);
-      el.removeAttribute("href");
-      el.addEventListener("click", function (ev) { ev.preventDefault(); openOutside(el.getAttribute("data-app")); });
+      el.addEventListener("click", function () { location.href = links[el.getAttribute("data-app")]; });
     });
-    try {
-      tg.MainButton.setParams({ text: "💳 PAY ₹" + am + " NOW", color: "#fc4a1a", text_color: "#ffffff" });
-      tg.MainButton.show();
-      tg.MainButton.onClick(function () { openOutside("upi"); });
-    } catch (e) {}
-    document.getElementById("note").innerHTML = "Tap a button — your UPI app will open to pay.<br>After paying, come back to the bot and send the <b>12-digit UTR</b> or a <b>payment screenshot</b>.";
+    document.getElementById("note").innerHTML = "Your UPI app should open now. If not, tap a button above.<br>After paying, go back to the bot and send the <b>12-digit UTR</b> or a <b>payment screenshot</b>.";
+    setTimeout(function () { location.href = links[wantApp] || links.upi; }, 300);
     return;
   }
 
-  // ---- In the phone's browser: real UPI links work here.
-  btns.forEach(function (id) {
+  // ---------- Inside Telegram (or anywhere else): never touch upi:// here ----------
+  var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+  try { if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor("#1a1033"); tg.setBackgroundColor("#1a1033"); } } catch (e) {}
+  var base = location.href.split("#")[0];
+  var openOutside = function (app) {
+    var url = base + (base.indexOf("?") >= 0 ? "&" : "?") + "ext=1&app=" + encodeURIComponent(app || "upi") + "&t=" + Date.now();
+    var done = false;
+    try { if (tg && tg.openLink) { tg.openLink(url); done = true; } } catch (e) {}
+    if (!done) { try { window.open(url, "_blank"); } catch (e) {} }
+  };
+  ids.forEach(function (id) {
     var el = document.getElementById(id);
-    el.href = links[el.getAttribute("data-app")];
+    el.addEventListener("click", function () { openOutside(el.getAttribute("data-app")); });
   });
-  var target = links[wantApp] || links.upi;
-  setTimeout(function () { try { location.href = target; } catch (e) {} }, 300);
+  try {
+    if (tg && tg.MainButton) {
+      tg.MainButton.setParams({ text: "💳 PAY ₹" + am + " NOW", color: "#fc4a1a", text_color: "#ffffff" });
+      tg.MainButton.show();
+      tg.MainButton.onClick(function () { openOutside("upi"); });
+    }
+  } catch (e) {}
 })();
 </script>
 </body>
